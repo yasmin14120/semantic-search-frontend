@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block header %}
+{% endblock header %}
+
+{% block title %}
+    <span data-i18n="search.title">Semantic Search Tests</span>
+{% endblock title %}
+
+{% block subtitle %}
+    <span></span>
+{% endblock subtitle %}
+{% block headline %}
+<div class="four wide column">
+      <h2 >210</h2>
+      <p>terms searched with Model 1</p>
+  </div>
+  <div class="four wide column">
+      <h2 >212</h2>
+      <p>terms searched with Model 2</p>
+  </div>
+  <div class="four wide column">
+      <h2>218</h2>
+      <p>terms searched with Model 3</p>
+  </div>
+  <div class="four wide column">
+      <h2 id="model">211</h2>
+      <p>terms searched with Model 4</p>
+  </div>
+{% endblock headline %}
+
+{% block content %}
+    <div class="soft-border" style="margin-top: 30px;">
+  <div class="ui inverted transparent icon input fluid large" style="margin: 10px">
+    <input id="searchInput" type="text" placeholder="Search...">
+    <i class="search icon" onclick="search(search_inp)"></i>
+  </div>
+    </div>
+
+<div class="main rocketresults">
+    <div id="resDiv" class="ui divided items">
+
+    </div>
+</div>
+<div style="margin-bottom: 200px"></div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    var active_database = null;
+    var search_inp = document.getElementById("searchInput");
+    var search_out = document.getElementById("resDiv");
+    /* session_id for recording statistics */
+    var session_id = (Date.now().toString() + "-" + Math.random().toString().substr(2, 5)).toUpperCase();
+    var counter = document.getElementById("model");
+    get_counter();
+
+
+      /* Keydown listener for search form to select suggest items. */
+    search_inp.addEventListener("keydown", function(e) {
+
+        /* KeyCode 13 -> ENTER */
+        if (e.keyCode === 13) {
+            /* Prevent the form from being submitted. */
+            search(this.value);
+        }
+    });
+
+    /* Function to trigger search. */
+    function search(val) {
+        fetch('{{ search_url }}', {
+            method: 'POST',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({'term': val, 'dataset': 'data_books', 'size': 5}),
+        })
+            .then(res => res.json())
+            .then(data => prepare_results(val, data))
+            .catch(function (){
+                search_out.innerHTML = "No Embedding could be found for the search term.";
+            })
+    }
+
+
+    /* śunction to prepare results */
+    function prepare_results(val, data){
+        get_counter();
+        last_val = val;
+        last_hits = data.total_hits;
+        render_results(data.results);
+    }
+
+    /* Function to create a list of results. */
+    function render_results(arr) {
+        search_out.innerHTML = '';
+        for (i = 0; i < arr.length; i++) {
+            item = document.createElement("DIV");
+            item.setAttribute("class", "content soft-border");
+            item.setAttribute("id", arr[i]['_id'])
+            title = "<h4>"+ arr[i]["_source"]["title"] + "</h4>"
+            tmp = arr[i]['_source']['description'] + '<div class="ui inverted divider"></div>\n' +
+                '            \t Relevant?\n' +
+                '            <div class="ui rating" data-max-rating="5"></div>\n' +
+                '            <button class="ui green icon button" id="'+ arr[i]['_id'] + '_up" onclick="prepare_stats(\''+ arr[i]['_id'] + '\',true)" style="padding: 6px;">\n' +
+                '                <i class="thumbs up icon"></i>\n' +
+                '            </button>\n' +
+                '            <button class="ui red icon button" id="'+ arr[i]['_id'] + '_down" onclick="prepare_stats(\''+ arr[i]['_id'] + '\',false)" style="padding: 6px;">\n' +
+                '                <i class="thumbs down icon" ></i>\n' +
+                '            </button>\n' +
+                '        </div>';
+            item.innerHTML = title + tmp;
+            search_out.appendChild(item);
+        }
+    }
+
+    function prepare_stats(id, rating){
+        document.getElementById(id+"_up").disabled = true;
+        document.getElementById(id+"_down").disabled = true;
+        document.getElementById(id).setAttribute("class", "content soft-border disabled_content");
+        return send_stats(last_val, 'data_books', 5, id, rating)
+    }
+
+    /* Send statistic record */
+    function send_stats(val, dataset, size, id, rating){
+        let doc = {};
+        doc['term'] = val;
+        doc['session_id'] = session_id;
+        doc['dataset'] = dataset;
+        doc['size'] = size;
+        doc['id'] = id;
+        doc['rating'] = rating;
+
+        fetch("/stats", {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(doc),
+        });
+    }
+
+    function get_counter() {
+        fetch("/get_counter", {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(res => res.json())
+        .then(data => show_counter(data))
+    }
+    function show_counter(data) {
+        console.log(data)
+        counter.innerHTML = data["counter"]
+
+    }
+
+</script>
+{% endblock scripts %}

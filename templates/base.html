@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de" xmlns="http://www.w3.org/1999/html">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" type="text/css" href="/static/semantic/semantic.css">
+    <link rel="stylesheet" type="text/css" href="/static/main.css">
+    <link rel="shortcut icon" href="/static/favicon.ico">
+    <script src="/static/jquery.min.js"></script>
+    <script src="/static/semantic/semantic.js"></script>
+    <script src="/static/droxit.js"></script>
+    {% block header %} {% endblock header %}
+</head>
+
+<body>
+<div class="header">
+  <h1>Semantic Search</h1>
+  <p>Test Search to analyse the semantic search engine</p>
+<div class="ui grid" style="margin-top: 30px">
+  {% block headline %}{% endblock headline %}
+</div>
+</div>
+<div class="row">
+        <div class="column left">
+    {% block left %}{% endblock left %}
+        </div>
+    <div class="column middle">
+    {% block content %} {% endblock content %}
+  </div>
+    <div class="column right">
+    </div>
+    {% block right %}{% endblock right %}
+    </div>
+</div>
+
+{% block scripts %}
+{% endblock scripts %}
+</body>
+</html>

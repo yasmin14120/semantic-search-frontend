@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block header %}
+{% endblock header %}
+
+{% block title %}
+    <span data-i18n="search.title">Semantic Search Tests</span>
+{% endblock title %}
+
+{% block subtitle %}
+    <span></span>
+{% endblock subtitle %}
+
+{% block content %}
+    <div class="soft-border" style="margin-top: 30px;">
+  <div class="ui inverted transparent icon input fluid large" style="margin: 10px">
+    <input id="searchInput" type="text" placeholder="Search...">
+    <i class="search icon" onclick="search(search_inp)"></i>
+  </div>
+    </div>
+
+<div class="main rocketresults">
+    <div id="resDiv" class="ui divided items">
+
+    </div>
+</div>
+<div style="margin-bottom: 200px"></div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    var active_model = '{{ model }}';
+    var active_database = null;
+    var search_inp = document.getElementById("searchInput");
+    var search_out = document.getElementById("resDiv");
+    /* session_id for recording statistics */
+    var session_id = (Date.now().toString() + "-" + Math.random().toString().substr(2, 5)).toUpperCase();
+
+      /* Keydown listener for search form to select suggest items. */
+    search_inp.addEventListener("keydown", function(e) {
+
+        /* KeyCode 13 -> ENTER */
+        if (e.keyCode === 13) {
+            console.log("ENTER PRESSED")
+            /* Prevent the form from being submitted. */
+            search(this.value);
+        }
+    });
+
+    /* Function to trigger search. */
+    function search(val) {
+        console.log("SEARCH FOUND")
+        fetch('{{ search_url }}', {
+            method: 'POST',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({'term': val, 'model': active_model, 'dataset': 'data_books', 'size': 5}),
+        })
+            .then(res => res.json())
+            .then(data => prepare_results(val, data))
+    }
+
+
+    /* Function to prepare results */
+    function prepare_results(val, data){
+        last_val = val;
+        last_hits = data.total_hits;
+        render_results(data.results);
+    }
+
+    /* Function to create a list of results. */
+    function render_results(arr) {
+        search_out.innerHTML = '';
+        for (i = 0; i < arr.length; i++) {
+            item = document.createElement("DIV");
+            item.setAttribute("class", "content soft-border");
+            title = "<h4>"+ arr[i]["_source"]["title"] + "</h4>"
+            tmp = arr[i]['_source']['description'] + '<div class="ui inverted divider"></div>\n' +
+                '            \t Relevant?\n' +
+                '            <div class="ui rating" id="' + arr[i]['_id'] + '"></div>\n' +
+                '            <div class="ui green icon button" onclick="prepare_stats(\''+ arr[i]['_id'] + '\',true)" style="padding: 6px;">\n' +
+                '                <i class="thumbs up icon"></i>\n' +
+                '            </div>\n' +
+                '            <div class="ui red icon button" onclick="prepare_stats(\''+ arr[i]['_id'] + '\',false)" style="padding: 6px;">\n' +
+                '                <i class="thumbs down icon"></i>\n' +
+                '            </div>\n' +
+                '        </div>';
+            item.innerHTML = title + tmp;
+            search_out.appendChild(item);
+        }
+    }
+
+    function prepare_stats(id, rating){
+        var item = document.getElementById(id);
+        item.addClass("disable")
+        return send_stats(last_val, 'glove', 'data_books', 5, id, rating)
+    }
+
+    /* Send statistic record */
+    function send_stats(val, model, dataset, size, id, rating){
+        let doc = {};
+        doc['term'] = val;
+        doc['session_id'] = session_id;
+        doc['model'] = model;
+        doc['dataset'] = dataset;
+        doc['size'] = size;
+        doc['id'] = id;
+        doc['rating'] = rating;
+
+        fetch("/stats", {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            redirect: 'follow',
+            referrer: 'no-referrer',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(doc),
+        });
+    }
+</script>
+{% endblock scripts %}
